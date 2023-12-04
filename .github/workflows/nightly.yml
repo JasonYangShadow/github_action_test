@@ -1,0 +1,47 @@
+---
+name: nightly
+
+on: [push]
+
+jobs:
+    extract:
+        runs-on: ubuntu-latest
+        outputs:
+            commits: ${{ steps.commits.outputs.data }}
+        steps:
+            - name: checkout
+              uses: actions/checkout@v3
+            - name: extract commits
+              id: commits
+              run: |
+                echo "data=`git reflog main --since="24 hours ago" | jq --raw-input . | jq --slurp . | jq -c .`" >> $GITHUB_OUTPUT
+    build:
+        permissions: write-all # enough permisson to create new tag
+        runs-on: ubuntu-latest
+        needs: extract
+        strategy:
+            matrix:
+                go-version: ['1.19']
+                commits: ${{ fromJSON(needs.extract.outputs.commits) }}
+        if: contains(fromJSON(${{ needs.extract.outputs.commits }})), 'main')
+        steps:
+            - name: checkout
+              uses: actions/checkout@v3
+            - uses: ./.github/action/prepare
+              with:
+                go-version: ${{ matrix.go-version }}
+            - name: get release name
+              run: echo "RELEASE_NAME=night-release-$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
+            - name: create nightly release
+              uses: xresloader/upload-to-github-release@v1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                file: "m"
+                tag_name: "nightly"
+                prerelease: true
+                draft: false
+                branches: "main"
+                default_release_name: ${{ env.RELEASE_NAME }}
+                default_release_body: ${{ matrix.commits }}
+

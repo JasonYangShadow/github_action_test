@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/pborman/uuid"
+)
 
 var version string
 
@@ -9,5 +13,6 @@ func init() {
 }
 
 func main() {
-	fmt.Printf("version: %s, content: hello world\n", version)
+	uuid := uuid.NewRandom()
+	fmt.Printf("version: %s, uuid: %s,content: hello world\n", version, uuid.String())
 }
